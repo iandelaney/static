@@ -26,10 +26,8 @@ def copy_directory(src, dst):
     if not os.path.exists(src):
         raise Exception(f"Source directory does not exist: {src}")
 
-    if os.path.exists(dst):
-        clear_directory(dst)
-    else:
-        os.mkdir(dst)
+    if not os.path.exists(dst):
+        os.makedirs(dst)
 
     for item in os.listdir(src):
         src_path = os.path.join(src, item)
@@ -39,7 +37,7 @@ def copy_directory(src, dst):
             print(f"Copying file: {src_path} -> {dst_path}")
             copy_file(src_path, dst_path)
         else:
-            os.mkdir(dst_path)
+            os.makedirs(dst_path, exist_ok=True)
             copy_directory(src_path, dst_path)
 
 
@@ -76,16 +74,34 @@ def generate_page(from_path, template_path, dest_path):
         dest_file.write(page_html)
 
 
+def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
+    for entry in os.listdir(dir_path_content):
+        from_path = os.path.join(dir_path_content, entry)
+        dest_path = os.path.join(dest_dir_path, entry)
+
+        if os.path.isfile(from_path):
+            if from_path.endswith(".md"):
+                dest_path = dest_path[:-3] + ".html"
+                generate_page(from_path, template_path, dest_path)
+        else:
+            os.makedirs(dest_path, exist_ok=True)
+            generate_pages_recursive(from_path, template_path, dest_path)
+
+
 def main():
     base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     static_path = os.path.join(base_path, "static")
     public_path = os.path.join(base_path, "public")
-    content_path = os.path.join(base_path, "content", "index.md")
+    content_path = os.path.join(base_path, "content")
     template_path = os.path.join(base_path, "template.html")
-    output_path = os.path.join(public_path, "index.html")
+
+    if os.path.exists(public_path):
+        clear_directory(public_path)
+    else:
+        os.mkdir(public_path)
 
     copy_directory(static_path, public_path)
-    generate_page(content_path, template_path, output_path)
+    generate_pages_recursive(content_path, template_path, public_path)
 
 
 if __name__ == "__main__":
